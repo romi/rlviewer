@@ -217,7 +217,7 @@ int viewer_init(void)
 
 	// Create and compile our GLSL program from the shaders
 	quad_programID = LoadShaders( "Passthrough.vertexshader",
-                                      "PassThruTexture.fragmentshader" );
+                                      "Passthrough.fragmentshader" );
         texID = glGetUniformLocation(quad_programID, "renderedTexture");
     
         viewer_grab(NULL, 5.0f, 0.0f, 0.0f);
