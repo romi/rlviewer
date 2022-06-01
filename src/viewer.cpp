@@ -72,7 +72,7 @@ int viewer_init(void)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow(1024, 768, "Tutorial 14 - Render To Texture",
+	window = glfwCreateWindow(1024, 768, "Romi RL Viewer",
                                   NULL, NULL);
 	if (window == NULL) {
 		fprintf( stderr, "Failed to open GLFW window. If you have an Intel GPU, "
@@ -263,7 +263,7 @@ static void do_draw_model(float r, float lat, float lon)
         glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
         glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
 
-        glm::vec3 lightPos = glm::vec3(4,4,4);
+        glm::vec3 lightPos = glm::vec3(40,40,40);
         glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
 
         // Bind our texture in Texture Unit 0
