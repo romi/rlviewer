@@ -365,7 +365,7 @@ static void render_to_screen()
                 (void*)0            // array buffer offset
 		);
 
-        // Draw the triangles !
+        // Draw the triangles !log
         glDrawArrays(GL_TRIANGLES, 0, 6); // 2*3 indices starting at 0 -> 2 triangles
 
         glDisableVertexAttribArray(0);
@@ -426,7 +426,7 @@ static int load_model(const char *path)
         bool res = loadOBJ(path, vertices, uvs, normals);
         if (!res)
                 return -1;
-        
+
         std::vector<glm::vec3> indexed_vertices;
         std::vector<glm::vec2> indexed_uvs;
         std::vector<glm::vec3> indexed_normals;
@@ -434,26 +434,35 @@ static int load_model(const char *path)
                  indexed_uvs, indexed_normals);
 
         // Load it into a VBO
-        glGenBuffers(1, &vertexbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3),
-                     &indexed_vertices[0], GL_STATIC_DRAW);
+        if (indexed_vertices.size() > 0)
+        {
+            glGenBuffers(1, &vertexbuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+            glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3),
+                         &indexed_vertices[0], GL_STATIC_DRAW);
+        }
 
-        glGenBuffers(1, &uvbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        glBufferData(GL_ARRAY_BUFFER, indexed_uvs.size() * sizeof(glm::vec2),
-                     &indexed_uvs[0], GL_STATIC_DRAW);
+        if (indexed_uvs.size() > 0) {
+            glGenBuffers(1, &uvbuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+            glBufferData(GL_ARRAY_BUFFER, indexed_uvs.size() * sizeof(glm::vec2),
+                         &indexed_uvs[0], GL_STATIC_DRAW);
+        }
 
-        glGenBuffers(1, &normalbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-        glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(glm::vec3),
-                     &indexed_normals[0], GL_STATIC_DRAW);
+        if (indexed_normals.size() > 0) {
+            glGenBuffers(1, &normalbuffer);
+            glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
+            glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(glm::vec3),
+                         &indexed_normals[0], GL_STATIC_DRAW);
+        }
 
         // Generate a buffer for the indices as well
-        glGenBuffers(1, &elementbuffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short),
-                     &indices[0], GL_STATIC_DRAW);
+        if (indices.size() > 0) {
+            glGenBuffers(1, &elementbuffer);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short),
+                         &indices[0], GL_STATIC_DRAW);
+        }
 
         model_loaded = true;
         return 0;
