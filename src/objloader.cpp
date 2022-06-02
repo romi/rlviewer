@@ -3,9 +3,80 @@
 #include <string>
 #include <cstring>
 
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <vector>
+
 #include <glm/glm.hpp>
+#include <iostream>
+#include <fstream>
+#include "algorithm"
 
 #include "objloader.hpp"
+
+// VI = 10 10 10 10
+// VI_VT = 10/20 10/20 10/20
+// VI_VT_VN = 10/20/30 10/20/30 10/20/30
+// VI_VN = 10//30 10//30 10//30
+enum FACE_DATA_TYPE { VI, VI_VT, VI_VT_VN , VI_VN };
+
+
+
+enum FACE_DATA_TYPE face_data_type(std::string line)
+{
+    FACE_DATA_TYPE faceDataType;
+    std::string face;
+    std::istringstream line_stream(line);
+    std::getline(line_stream, face, ' ');
+
+    int count = std::count(face.begin(), face.end(), '/');
+    std::size_t double_found = face.find("//");
+    if (count == 0)
+        faceDataType = VI;
+    else if (count == 1)
+        faceDataType = VI_VT;
+    else if (double_found != std::string::npos )
+        faceDataType = VI_VN;
+    else {
+        faceDataType = VI_VT_VN;
+    }
+    return faceDataType;
+}
+
+
+void parse_face(FACE_DATA_TYPE face_date_type, std::string face_data, std::vector<unsigned int>& vertexIndices, std::vector<unsigned int>& uvIndices, std::vector<unsigned int>& normalIndices) {
+
+    char slash;
+    std::istringstream face_stream(face_data);
+    int vertex = 0, uv = 1, normal = 0;
+    // remove any space characters...
+    face_data.erase(remove(face_data.begin(), face_data.end(), ' '), face_data.end());
+    if (face_date_type == VI_VT){
+        face_stream >> vertex >> slash >> uv;
+    }
+    else if (face_date_type == VI_VT_VN) {
+        face_stream >> vertex >> slash >> uv >> slash >> normal;
+    }
+    else if (face_date_type == VI_VN){
+        face_stream >> vertex >>  slash >>  slash >> normal;
+    }
+    else{
+        // face_date_type == VI
+        // NO NORMAL.. TBD
+    }
+    vertexIndices.push_back(vertex); uvIndices.push_back(uv); normalIndices.push_back(normal);
+}
+
+
+void parse_face_line(std::istringstream& line_stream, std::vector<unsigned int>& vertexIndices, std::vector<unsigned int>& uvIndices, std::vector<unsigned int>& normalIndices) {
+    auto face_type = face_data_type(line_stream.str());
+    std::string face;
+    while (std::getline(line_stream, face, ' ')) {
+        parse_face(face_type, face, vertexIndices, uvIndices, normalIndices);
+    }
+}
+
 
 // Very, VERY simple OBJ loader.
 // Here is a short list of features a real function would provide : 
@@ -30,62 +101,48 @@ bool loadOBJ(
 	std::vector<glm::vec2> temp_uvs;
 	std::vector<glm::vec3> temp_normals;
 
+    std::ifstream input_file(path, std::ios::in);
+    if (!input_file) { std::cerr << "Cannot open " << path << std::endl;
+        return false;
+    }
 
-	FILE * file = fopen(path, "r");
-	if( file == NULL ){
-		printf("Impossible to open the file ! Are you in the right path ? See Tutorial 1 for details\n");
-		getchar();
-		return false;
-	}
+    std::string line;
+    while (getline(input_file, line)) {
+        std::string line_header = line.substr(0,2);
+        if (line_header == "v ") {
+            std::cout << "parsing vertex v" << std::endl;
 
-	while( 1 ){
-
-		char lineHeader[128];
-		// read the first word of the line
-		int res = fscanf(file, "%s", lineHeader);
-		if (res == EOF)
-			break; // EOF = End Of File. Quit the loop.
-
-		// else : parse lineHeader
-		
-		if ( strcmp( lineHeader, "v" ) == 0 ){
-			glm::vec3 vertex;
-			fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );
-			temp_vertices.push_back(vertex);
-		}else if ( strcmp( lineHeader, "vt" ) == 0 ){
-			glm::vec2 uv;
-			fscanf(file, "%f %f\n", &uv.x, &uv.y );
-			uv.y = -uv.y; // Invert V coordinate since we will only use DDS texture, which are inverted. Remove if you want to use TGA or BMP loaders.
-			temp_uvs.push_back(uv);
-		}else if ( strcmp( lineHeader, "vn" ) == 0 ){
-			glm::vec3 normal;
-			fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z );
-			temp_normals.push_back(normal);
-		}else if ( strcmp( lineHeader, "f" ) == 0 ){
-			std::string vertex1, vertex2, vertex3;
-			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-			int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
-			if (matches != 9){
-				printf("File can't be read by our simple parser :-( Try exporting with other options\n");
-				fclose(file);
-				return false;
-			}
-			vertexIndices.push_back(vertexIndex[0]);
-			vertexIndices.push_back(vertexIndex[1]);
-			vertexIndices.push_back(vertexIndex[2]);
-			uvIndices    .push_back(uvIndex[0]);
-			uvIndices    .push_back(uvIndex[1]);
-			uvIndices    .push_back(uvIndex[2]);
-			normalIndices.push_back(normalIndex[0]);
-			normalIndices.push_back(normalIndex[1]);
-			normalIndices.push_back(normalIndex[2]);
-		}else{
-			// Probably a comment, eat up the rest of the line
-			char stupidBuffer[1000];
-			fgets(stupidBuffer, 1000, file);
-		}
-
-	}
+            std::istringstream line_stream(line.substr(2));
+//            glm::vec4 v; s >> v.x; s >> v.y; s >> v.z; v.w = 1.0;
+//            mesh->vertices.push_back(v);
+            glm::vec3 vertex;
+            line_stream >> vertex.x >> vertex.y >> vertex.z;
+            temp_vertices.push_back(vertex);
+        }
+        else if (line_header == "vn") {
+            std::cout << "parsing vertex v" << std::endl;
+            std::istringstream line_stream(line.substr(2));
+            glm::vec3 normal;
+            line_stream >> normal.x >> normal.y >> normal.z;
+            temp_normals.push_back(normal);
+        }
+        else if (line_header == "vt") {
+            std::cout << "parsing vertex t" << std::endl;
+            std::istringstream line_stream(line.substr(2));
+            glm::vec2 uv;
+            line_stream >> uv.x >> uv.y;
+            uv.y = -uv.y;
+            temp_uvs.push_back(uv);
+        }
+        else if (line_header == "f ") {
+            std::cout << "parsing face" << std::endl;
+            std::istringstream line_stream(line.substr(2));
+            parse_face_line(line_stream, vertexIndices, uvIndices, normalIndices);
+        }
+        else if (line[0] == '#') { /* ignoring this line */ }
+        else { /* ignoring this line */ }
+    }
+    std::cout << "parsed_ob" << std::endl;
 
 	// For each vertex of each triangle
 	for( unsigned int i=0; i<vertexIndices.size(); i++ ){
@@ -106,7 +163,6 @@ bool loadOBJ(
 		out_normals .push_back(normal);
 	
 	}
-	fclose(file);
 	return true;
 }
 

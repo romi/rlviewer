@@ -1,8 +1,6 @@
 #ifndef __VIEWER_H
 #define __VIEWER_H
 
-#include <cstdint>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
