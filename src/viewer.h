@@ -8,7 +8,7 @@ extern "C" {
         int viewer_init(void);
         int viewer_load(const char *path);
         int viewer_grab(uint8_t *pixels, float r, float lat, float lan);
-        int viewer_mask(float *depth, float r, float lat, float lan);
+        void viewer_set_light(int index, float x, float y, float z, float power);
         int viewer_cleanup(void);
 
 #ifdef __cplusplus

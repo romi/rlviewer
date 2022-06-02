@@ -8,7 +8,7 @@
 
 static PyObject *rlviewer_load(PyObject *self, PyObject *args);
 static PyObject *rlviewer_grab(PyObject *self, PyObject *args);
-static PyObject *rlviewer_mask(PyObject *self, PyObject *args);
+static PyObject *rlviewer_set_light(PyObject *self, PyObject *args);
 
 static uint8_t *pixels = NULL;
 static float *depth = NULL;
@@ -20,7 +20,7 @@ static npy_intp shape_mask[3] = { 768, 1024 };
 static PyMethodDef RLViewerMethods[] = {
         {"load",  rlviewer_load, METH_VARARGS, "XYZ"},
         {"grab",  rlviewer_grab, METH_VARARGS, "XYZ"},
-        {"mask",  rlviewer_mask, METH_VARARGS, "XYZ"},
+        {"set_light",  rlviewer_set_light, METH_VARARGS, "XYZ"},
         {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -88,19 +88,16 @@ static PyObject *rlviewer_grab(PyObject *self, PyObject *args)
         return pArray;
 }
 
-static PyObject *rlviewer_mask(PyObject *self, PyObject *args)
+static PyObject *rlviewer_set_light(PyObject *self, PyObject *args)
 {
-        float r, lat, lon;
+        int index;
+        float x, y, z, power;
         
-        if (!PyArg_ParseTuple(args, "fff", &r, &lat, &lon))
+        if (!PyArg_ParseTuple(args, "iffff", &index, &x, &y, &z, &power))
                 return NULL;
 
-        viewer_mask(depth, r, lat, lon);
+        viewer_set_light(index, x, y, z, power);
 
-        // Convert it to a NumPy array.
-        PyObject *pArray = PyArray_SimpleNewFromData(dimensions_mask, shape_mask, NPY_UBYTE,
-                                                     (void *) pixels);
-        
-        return pArray;
+        Py_RETURN_NONE;
 }
 

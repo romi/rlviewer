@@ -37,7 +37,14 @@ GLuint ViewMatrixID;
 GLuint ModelMatrixID;
 GLuint Texture;
 GLuint TextureID;
-GLuint LightID;
+GLuint Light1ID;
+GLuint Light2ID;
+GLuint Light3ID;
+GLuint Light4ID;
+GLuint LightPower1ID;
+GLuint LightPower2ID;
+GLuint LightPower3ID;
+GLuint LightPower4ID;
 
 bool model_loaded = false;
 GLuint vertexbuffer;
@@ -54,6 +61,15 @@ GLuint texID;
 std::vector<unsigned short> indices;
 pthread_t thread;
 bool running = true;
+glm::vec3 lightPos1 = glm::vec3(40, 40, 40);
+glm::vec3 lightPos2 = glm::vec3(-40, -40, -40);
+glm::vec3 lightPos3 = glm::vec3(0, 0, 80);
+glm::vec3 lightPos4 = glm::vec3(0, 0, -80);
+float lightPower1 = 5000.0f;
+float lightPower2 = 0.0f;
+float lightPower3 = 0.0f;
+float lightPower4 = 0.0f;
+
 
 int viewer_init(void)
 {
@@ -137,8 +153,15 @@ int viewer_init(void)
         
 	// Get a handle for our "LightPosition" uniform
 	glUseProgram(programID);
-	LightID = glGetUniformLocation(programID, "LightPosition_worldspace");
-
+	Light1ID = glGetUniformLocation(programID, "LightPosition1_worldspace");
+	LightPower1ID = glGetUniformLocation(programID, "LightPower1");
+	Light2ID = glGetUniformLocation(programID, "LightPosition2_worldspace");
+	LightPower2ID = glGetUniformLocation(programID, "LightPower2");
+	Light3ID = glGetUniformLocation(programID, "LightPosition3_worldspace");
+	LightPower3ID = glGetUniformLocation(programID, "LightPower3");
+	Light4ID = glGetUniformLocation(programID, "LightPosition4_worldspace");
+	LightPower4ID = glGetUniformLocation(programID, "LightPower4");
+        
 
 	// ---------------------------------------------
 	// Render to Texture - specific code begins here
@@ -219,9 +242,10 @@ int viewer_init(void)
 	quad_programID = LoadShaders( "Passthrough.vertexshader",
                                       "Passthrough.fragmentshader" );
         texID = glGetUniformLocation(quad_programID, "renderedTexture");
-    
+
         viewer_grab(NULL, 5.0f, 0.0f, 0.0f);
 
+        
         running = true;
         int ret = pthread_create(&thread, NULL, poll_events, NULL);
         
@@ -263,8 +287,14 @@ static void do_draw_model(float r, float lat, float lon)
         glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
         glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
 
-        glm::vec3 lightPos = glm::vec3(40,40,40);
-        glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
+        glUniform3f(Light1ID, lightPos1.x, lightPos1.y, lightPos1.z);
+        glUniform1f(LightPower1ID, lightPower1);
+        glUniform3f(Light2ID, lightPos2.x, lightPos2.y, lightPos2.z);
+        glUniform1f(LightPower2ID, lightPower2);
+        glUniform3f(Light3ID, lightPos3.x, lightPos3.y, lightPos3.z);
+        glUniform1f(LightPower3ID, lightPower3);
+        glUniform3f(Light4ID, lightPos4.x, lightPos4.y, lightPos4.z);
+        glUniform1f(LightPower4ID, lightPower4);
 
         // Bind our texture in Texture Unit 0
         glActiveTexture(GL_TEXTURE0);
@@ -485,10 +515,26 @@ int viewer_cleanup(void)
 	glDeleteBuffers(1, &quad_vertexbuffer);
 	glDeleteVertexArrays(1, &VertexArrayID);
 
-
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
 
 	return 0;
+}
+
+void viewer_set_light(int index, float x, float y, float z, float power)
+{
+        if (index == 0) {
+                lightPos1 = glm::vec3(x, y, z);
+                lightPower1 = power;
+        } else if (index == 1) {
+                lightPos2 = glm::vec3(x, y, z);
+                lightPower2 = power;
+        } else if (index == 2) {
+                lightPos3 = glm::vec3(x, y, z);
+                lightPower3 = power;
+        } else if (index == 3) {
+                lightPos4 = glm::vec3(x, y, z);
+                lightPower4 = power;
+        }
 }
 
