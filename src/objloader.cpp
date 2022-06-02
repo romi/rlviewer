@@ -64,18 +64,24 @@ bool loadOBJ(
 		}else if ( strcmp( lineHeader, "f" ) == 0 ){
 			std::string vertex1, vertex2, vertex3;
 			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-			int matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
+			int matches = 0;
+            char dump;
+            matches = fscanf(file, "%d/%d/%d %d/%d/%d %d/%d/%d", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2] );
 			if (matches != 9){
-				printf("File can't be read by our simple parser :-( Try exporting with other options\n");
+                matches = fscanf(file, "%d%c%c%d %d%c%c%d %d%c%c%d", &vertexIndex[0],&dump, &dump,&normalIndex[0], &vertexIndex[1],&dump,&dump, &normalIndex[1], &vertexIndex[2],&dump,&dump, &normalIndex[2] );
+                if (matches != 6){
+				printf("File can't be read by our simple parser :-( Try exporting with other options %d\n", matches);
 				fclose(file);
-				return false;
+				return false;}
+                else
+                    uvIndex[0] = 1; uvIndex[1] = 1; uvIndex[2] = 1;
 			}
 			vertexIndices.push_back(vertexIndex[0]);
 			vertexIndices.push_back(vertexIndex[1]);
 			vertexIndices.push_back(vertexIndex[2]);
-			uvIndices    .push_back(uvIndex[0]);
-			uvIndices    .push_back(uvIndex[1]);
-			uvIndices    .push_back(uvIndex[2]);
+//			uvIndices    .push_back(uvIndex[0]);
+//			uvIndices    .push_back(uvIndex[1]);
+//			uvIndices    .push_back(uvIndex[2]);
 			normalIndices.push_back(normalIndex[0]);
 			normalIndices.push_back(normalIndex[1]);
 			normalIndices.push_back(normalIndex[2]);
@@ -102,7 +108,7 @@ bool loadOBJ(
 		
 		// Put the attributes in buffers
 		out_vertices.push_back(vertex);
-		out_uvs     .push_back(uv);
+//		out_uvs     .push_back(uv);
 		out_normals .push_back(normal);
 	
 	}

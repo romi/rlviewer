@@ -7,7 +7,7 @@ output_dir = "out"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
     
-rlviewer.load('sphere.obj') 
+rlviewer.load('215.obj')
 rlviewer.set_light(0, 120, 0, 0, 5000) 
 rlviewer.set_light(1, -120, 0, 0, 5000) 
 rlviewer.set_light(2, 0, 0, 120, 5000) 
