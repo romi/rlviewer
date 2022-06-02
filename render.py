@@ -7,7 +7,7 @@ output_dir = "out"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
   
-rlviewer.load('215.obj') 
+rlviewer.load('215.obj')
 
 for lat in range(0, 90, 5): 
     for lon in range(0, 360, 3):

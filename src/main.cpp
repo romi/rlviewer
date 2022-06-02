@@ -7,7 +7,7 @@
 static uint16_t shape_rgb[3] = { 768, 1024, 3 };
 
 int main(int argc, char** argv) {
-    std::string filename = "208.obj";
+    std::string filename = "215.obj";
     if (argc == 2)
         filename = argv[1];
 

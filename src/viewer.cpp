@@ -55,6 +55,11 @@ std::vector<unsigned short> indices;
 pthread_t thread;
 bool running = true;
 
+
+std::vector<glm::vec4> vertices;
+std::vector<glm::vec3> normals;
+std::vector<GLushort> elements;
+
 int viewer_init(void)
 {
 	// Initialise GLFW
@@ -284,20 +289,8 @@ static void do_draw_model(float r, float lat, float lon)
                 (void*)0            // array buffer offset
                 );
 
-        // 2nd attribute buffer : UVs
-        glEnableVertexAttribArray(1);
-        glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        glVertexAttribPointer(
-                1,                                // attribute
-                2,                                // size
-                GL_FLOAT,                         // type
-                GL_FALSE,                         // normalized?
-                0,                                // stride
-                (void*)0                          // array buffer offset
-                );
-
         // 3rd attribute buffer : normals
-        glEnableVertexAttribArray(2);
+        glEnableVertexAttribArray(1);
         glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
         glVertexAttribPointer(
                 2,                                // attribute
@@ -321,7 +314,7 @@ static void do_draw_model(float r, float lat, float lon)
 
         glDisableVertexAttribArray(0);
         glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(2);
+//        glDisableVertexAttribArray(2);
 }
 
 static void draw_model(float r, float lat, float lon)
@@ -420,48 +413,31 @@ int viewer_mask(float *mask, float r, float lat, float lon)
 static int load_model(const char *path)
 {
         printf("loading %s\n", path);
-        std::vector<glm::vec3> vertices;
-        std::vector<glm::vec2> uvs;
-        std::vector<glm::vec3> normals;
-        bool res = loadOBJ(path, vertices, uvs, normals);
+//        bool res = loadOBJ(path, vertices, uvs, normals);
+    bool res = loadOBJ(path, vertices,  normals, elements);
         if (!res)
                 return -1;
 
-        std::vector<glm::vec3> indexed_vertices;
-        std::vector<glm::vec2> indexed_uvs;
-        std::vector<glm::vec3> indexed_normals;
-        indexVBO(vertices, uvs, normals, indices, indexed_vertices,
-                 indexed_uvs, indexed_normals);
-
-        // Load it into a VBO
-        if (indexed_vertices.size() > 0)
+        if (!vertices.empty())
         {
             glGenBuffers(1, &vertexbuffer);
             glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-            glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3),
-                         &indexed_vertices[0], GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3),
+                         &vertices[0], GL_STATIC_DRAW);
         }
 
-        if (indexed_uvs.size() > 0) {
-            glGenBuffers(1, &uvbuffer);
-            glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-            glBufferData(GL_ARRAY_BUFFER, indexed_uvs.size() * sizeof(glm::vec2),
-                         &indexed_uvs[0], GL_STATIC_DRAW);
-        }
-
-        if (indexed_normals.size() > 0) {
+        if (!normals.empty()) {
             glGenBuffers(1, &normalbuffer);
             glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-            glBufferData(GL_ARRAY_BUFFER, indexed_normals.size() * sizeof(glm::vec3),
-                         &indexed_normals[0], GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3),
+                         &normals[0], GL_STATIC_DRAW);
         }
 
-        // Generate a buffer for the indices as well
-        if (indices.size() > 0) {
+        if (!elements.empty()) {
             glGenBuffers(1, &elementbuffer);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short),
-                         &indices[0], GL_STATIC_DRAW);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, elements.size() * sizeof(unsigned short),
+                         &elements[0], GL_STATIC_DRAW);
         }
 
         model_loaded = true;
@@ -473,7 +449,6 @@ static void unload_model(void)
         if (model_loaded) {
                 // Cleanup VBO
                 glDeleteBuffers(1, &vertexbuffer);
-                glDeleteBuffers(1, &uvbuffer);
                 glDeleteBuffers(1, &normalbuffer);
                 glDeleteBuffers(1, &elementbuffer);
                 model_loaded = false;

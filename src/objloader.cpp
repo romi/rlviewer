@@ -11,11 +11,12 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include <fstream>
+#include <GL/glew.h>
 #include "algorithm"
 
 #include "objloader.hpp"
 
-// VI = 10 10 10 10
+// VI (elements)= 10 10 10 10
 // VI_VT = 10/20 10/20 10/20
 // VI_VT_VN = 10/20/30 10/20/30 10/20/30
 // VI_VN = 10//30 10//30 10//30
@@ -45,36 +46,45 @@ enum FACE_DATA_TYPE face_data_type(std::string line)
 }
 
 
-void parse_face(FACE_DATA_TYPE face_date_type, std::string face_data, std::vector<unsigned int>& vertexIndices, std::vector<unsigned int>& uvIndices, std::vector<unsigned int>& normalIndices) {
+void parse_face(FACE_DATA_TYPE face_date_type, std::string face_data, std::vector<int>& face_normal, std::vector<GLushort> & elements) {
 
     char slash;
     std::istringstream face_stream(face_data);
-    int vertex = 0, uv = 1, normal = 0;
+    GLushort element_vertex = 0;
+    int normal = 0, uv = 0;
     // remove any space characters...
     face_data.erase(remove(face_data.begin(), face_data.end(), ' '), face_data.end());
     if (face_date_type == VI_VT){
-        face_stream >> vertex >> slash >> uv;
+        face_stream >> element_vertex >> slash >> uv;
+        elements.push_back(element_vertex);
     }
     else if (face_date_type == VI_VT_VN) {
-        face_stream >> vertex >> slash >> uv >> slash >> normal;
+        face_stream >> element_vertex >> slash >> uv >> slash >> normal;
+        elements.push_back(element_vertex);
+//        face_normal.push_back(normal);
     }
     else if (face_date_type == VI_VN){
-        face_stream >> vertex >>  slash >>  slash >> normal;
+        face_stream >> element_vertex >>  slash >>  slash >> normal;
+        elements.push_back(element_vertex);
+//        face_normal.push_back(normal);
     }
     else{
         // face_date_type == VI
         // NO NORMAL.. TBD
     }
-    vertexIndices.push_back(vertex); uvIndices.push_back(uv); normalIndices.push_back(normal);
 }
 
 
-void parse_face_line(std::istringstream& line_stream, std::vector<unsigned int>& vertexIndices, std::vector<unsigned int>& uvIndices, std::vector<unsigned int>& normalIndices) {
+void parse_face_line(std::istringstream& line_stream, std::vector<glm::vec3>& normals, std::vector<GLushort> & elements) {
     auto face_type = face_data_type(line_stream.str());
     std::string face;
-    while (std::getline(line_stream, face, ' ')) {
-        parse_face(face_type, face, vertexIndices, uvIndices, normalIndices);
+    int max = 3; // Only supporting 3 vertex faces for now.
+    int current = 0;
+    std::vector<int> face_normal;
+    while (std::getline(line_stream, face, ' ') && current++<max) {
+        parse_face(face_type, face, face_normal, elements);
     }
+//    normals.emplace_back(face_normal[0], face_normal[1], face_normal[2]);
 }
 
 
@@ -88,19 +98,45 @@ void parse_face_line(std::istringstream& line_stream, std::vector<unsigned int>&
 // - More secure. Change another line and you can inject code.
 // - Loading from memory, stream, etc
 
+void calc_normals(	std::vector<glm::vec4> & vertices,
+                      std::vector<glm::vec3> & normals,
+                      std::vector<GLushort> & elements) {
+    std::vector<int> nb_seen;
+    normals.resize(vertices.size(), glm::vec3(0.0, 0.0, 0.0));
+    nb_seen.resize(vertices.size(), 0);
+    for (unsigned int i = 0; i < elements.size(); i+=3) {
+        GLushort ia = elements[i];
+        GLushort ib = elements[i+1];
+        GLushort ic = elements[i+2];
+        glm::vec3 normal = glm::normalize(glm::cross(
+                glm::vec3(vertices[ib]) - glm::vec3(vertices[ia]),
+                glm::vec3(vertices[ic]) - glm::vec3(vertices[ia])));
+
+        int v[3];  v[0] = ia;  v[1] = ib;  v[2] = ic;
+        for (int j = 0; j < 3; j++) {
+            GLushort cur_v = v[j];
+            nb_seen[cur_v]++;
+            if (nb_seen[cur_v] == 1) {
+                normals[cur_v] = normal;
+            } else {
+                // average
+                normals[cur_v].x = normals[cur_v].x * (1.0 - 1.0/nb_seen[cur_v]) + normal.x * 1.0/nb_seen[cur_v];
+                normals[cur_v].y = normals[cur_v].y * (1.0 - 1.0/nb_seen[cur_v]) + normal.y * 1.0/nb_seen[cur_v];
+                normals[cur_v].z = normals[cur_v].z * (1.0 - 1.0/nb_seen[cur_v]) + normal.z * 1.0/nb_seen[cur_v];
+                normals[cur_v] = glm::normalize(normals[cur_v]);
+            }
+        }
+    }
+}
+
+
 bool loadOBJ(
 	const char * path, 
-	std::vector<glm::vec3> & out_vertices, 
-	std::vector<glm::vec2> & out_uvs,
-	std::vector<glm::vec3> & out_normals
+	std::vector<glm::vec4> & vertices,
+	std::vector<glm::vec3> & normals,
+    std::vector<GLushort> & elements
 ){
 	printf("Loading OBJ file %s...\n", path);
-
-	std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
-	std::vector<glm::vec3> temp_vertices; 
-	std::vector<glm::vec2> temp_uvs;
-	std::vector<glm::vec3> temp_normals;
-
     std::ifstream input_file(path, std::ios::in);
     if (!input_file) { std::cerr << "Cannot open " << path << std::endl;
         return false;
@@ -113,56 +149,20 @@ bool loadOBJ(
             std::cout << "parsing vertex v" << std::endl;
 
             std::istringstream line_stream(line.substr(2));
-//            glm::vec4 v; s >> v.x; s >> v.y; s >> v.z; v.w = 1.0;
-//            mesh->vertices.push_back(v);
-            glm::vec3 vertex;
-            line_stream >> vertex.x >> vertex.y >> vertex.z;
-            temp_vertices.push_back(vertex);
-        }
-        else if (line_header == "vn") {
-            std::cout << "parsing vertex v" << std::endl;
-            std::istringstream line_stream(line.substr(2));
-            glm::vec3 normal;
-            line_stream >> normal.x >> normal.y >> normal.z;
-            temp_normals.push_back(normal);
-        }
-        else if (line_header == "vt") {
-            std::cout << "parsing vertex t" << std::endl;
-            std::istringstream line_stream(line.substr(2));
-            glm::vec2 uv;
-            line_stream >> uv.x >> uv.y;
-            uv.y = -uv.y;
-            temp_uvs.push_back(uv);
+            glm::vec4 vertex;
+            line_stream >> vertex.x >> vertex.y >> vertex.z; vertex.w = 1.0;
+            vertices.push_back(vertex);
         }
         else if (line_header == "f ") {
             std::cout << "parsing face" << std::endl;
             std::istringstream line_stream(line.substr(2));
-            parse_face_line(line_stream, vertexIndices, uvIndices, normalIndices);
+            parse_face_line(line_stream, normals, elements);
         }
         else if (line[0] == '#') { /* ignoring this line */ }
         else { /* ignoring this line */ }
     }
     std::cout << "parsed_ob" << std::endl;
-
-	// For each vertex of each triangle
-	for( unsigned int i=0; i<vertexIndices.size(); i++ ){
-
-		// Get the indices of its attributes
-		unsigned int vertexIndex = vertexIndices[i];
-		unsigned int uvIndex = uvIndices[i];
-		unsigned int normalIndex = normalIndices[i];
-		
-		// Get the attributes thanks to the index
-		glm::vec3 vertex = temp_vertices[ vertexIndex-1 ];
-		glm::vec2 uv = temp_uvs[ uvIndex-1 ];
-		glm::vec3 normal = temp_normals[ normalIndex-1 ];
-		
-		// Put the attributes in buffers
-		out_vertices.push_back(vertex);
-		out_uvs     .push_back(uv);
-		out_normals .push_back(normal);
-	
-	}
+    calc_normals(vertices, normals, elements);
 	return true;
 }
 
@@ -193,34 +193,34 @@ bool loadAssImp(
 	const aiMesh* mesh = scene->mMeshes[0]; // In this simple example code we always use the 1rst mesh (in OBJ files there is often only one anyway)
 
 	// Fill vertices positions
-	vertices.reserve(mesh->mNumVertices);
-	for(unsigned int i=0; i<mesh->mNumVertices; i++){
-		aiVector3D pos = mesh->mVertices[i];
+	vertices.reserve(mNumVertices);
+	for(unsigned int i=0; i<mNumVertices; i++){
+		aiVector3D pos = mVertices[i];
 		vertices.push_back(glm::vec3(pos.x, pos.y, pos.z));
 	}
 
 	// Fill vertices texture coordinates
-	uvs.reserve(mesh->mNumVertices);
-	for(unsigned int i=0; i<mesh->mNumVertices; i++){
-		aiVector3D UVW = mesh->mTextureCoords[0][i]; // Assume only 1 set of UV coords; AssImp supports 8 UV sets.
+	uvs.reserve(mNumVertices);
+	for(unsigned int i=0; i<mNumVertices; i++){
+		aiVector3D UVW = mTextureCoords[0][i]; // Assume only 1 set of UV coords; AssImp supports 8 UV sets.
 		uvs.push_back(glm::vec2(UVW.x, UVW.y));
 	}
 
 	// Fill vertices normals
-	normals.reserve(mesh->mNumVertices);
-	for(unsigned int i=0; i<mesh->mNumVertices; i++){
-		aiVector3D n = mesh->mNormals[i];
+	normals.reserve(mNumVertices);
+	for(unsigned int i=0; i<mNumVertices; i++){
+		aiVector3D n = mNormals[i];
 		normals.push_back(glm::vec3(n.x, n.y, n.z));
 	}
 
 
 	// Fill face indices
-	indices.reserve(3*mesh->mNumFaces);
-	for (unsigned int i=0; i<mesh->mNumFaces; i++){
+	indices.reserve(3*mNumFaces);
+	for (unsigned int i=0; i<mNumFaces; i++){
 		// Assume the model has only triangles.
-		indices.push_back(mesh->mFaces[i].mIndices[0]);
-		indices.push_back(mesh->mFaces[i].mIndices[1]);
-		indices.push_back(mesh->mFaces[i].mIndices[2]);
+		indices.push_back(mFaces[i].mIndices[0]);
+		indices.push_back(mFaces[i].mIndices[1]);
+		indices.push_back(mFaces[i].mIndices[2]);
 	}
 	
 	// The "scene" pointer will be deleted automatically by "importer"
