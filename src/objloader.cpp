@@ -46,43 +46,39 @@ enum FACE_DATA_TYPE face_data_type(std::string line)
 }
 
 
-void parse_face(FACE_DATA_TYPE face_date_type, std::string face_data, std::vector<int>& face_normal, std::vector<GLushort> & elements) {
+void parse_face(FACE_DATA_TYPE face_date_type, std::string face_data, std::vector<unsigned int>& vertexIndex, std::vector<unsigned int> & normalsIndex) {
 
     char slash;
     std::istringstream face_stream(face_data);
-    GLushort element_vertex = 0;
-    int normal = 0, uv = 0;
+    unsigned int vertex_index = 0, uv = 0, normal_index = 0;
     // remove any space characters...
     face_data.erase(remove(face_data.begin(), face_data.end(), ' '), face_data.end());
     if (face_date_type == VI_VT){
-        face_stream >> element_vertex >> slash >> uv;
-        elements.push_back(element_vertex);
+        throw std::invalid_argument("x/y unsupported data type in obj file");
     }
     else if (face_date_type == VI_VT_VN) {
-        face_stream >> element_vertex >> slash >> uv >> slash >> normal;
-        elements.push_back(element_vertex);
-//        face_normal.push_back(normal);
+        face_stream >> vertex_index >> slash >> uv >> slash >> normal_index;
+        vertexIndex.push_back(vertex_index);
+        normalsIndex.push_back(normal_index);
     }
     else if (face_date_type == VI_VN){
-        face_stream >> element_vertex >>  slash >>  slash >> normal;
-        elements.push_back(element_vertex);
-//        face_normal.push_back(normal);
+        face_stream >> vertex_index >>  slash >>  slash >> normal_index;
+        vertexIndex.push_back(vertex_index);
+        normalsIndex.push_back(normal_index);
     }
     else{
-        // face_date_type == VI
-        // NO NORMAL.. TBD
+        throw std::invalid_argument("x unsupported data type in obj file");
     }
 }
 
 
-void parse_face_line(std::istringstream& line_stream, std::vector<glm::vec3>& normals, std::vector<GLushort> & elements) {
+void parse_face_line(std::istringstream& line_stream, std::vector<unsigned int>& vertexIndex, std::vector<unsigned int> & normalsIdex) {
     auto face_type = face_data_type(line_stream.str());
     std::string face;
     int max = 3; // Only supporting 3 vertex faces for now.
     int current = 0;
-    std::vector<int> face_normal;
     while (std::getline(line_stream, face, ' ') && current++<max) {
-        parse_face(face_type, face, face_normal, elements);
+        parse_face(face_type, face, vertexIndex, normalsIdex);
     }
 //    normals.emplace_back(face_normal[0], face_normal[1], face_normal[2]);
 }
@@ -140,7 +136,7 @@ bool loadOBJ(
 
     std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
     std::vector<glm::vec3> temp_vertices;
-    std::vector<glm::vec2> temp_uvs;
+//    std::vector<glm::vec2> temp_uvs;
     std::vector<glm::vec3> temp_normals;
 
 
@@ -165,12 +161,8 @@ bool loadOBJ(
             glm::vec3 vertex;
             fscanf(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z );
             temp_vertices.push_back(vertex);
-        }else if ( strcmp( lineHeader, "vt" ) == 0 ){
-            glm::vec2 uv;
-            fscanf(file, "%f %f\n", &uv.x, &uv.y );
-            uv.y = -uv.y; // Invert V coordinate since we will only use DDS texture, which are inverted. Remove if you want to use TGA or BMP loaders.
-            temp_uvs.push_back(uv);
-        }else if ( strcmp( lineHeader, "vn" ) == 0 ){
+        }
+        else if ( strcmp( lineHeader, "vn" ) == 0 ){
             glm::vec3 normal;
             fscanf(file, "%f %f %f\n", &normal.x, &normal.y, &normal.z );
             temp_normals.push_back(normal);
@@ -225,16 +217,21 @@ bool loadOBJ(
 
 
 bool loadOBJ_new(
-	const char * path, 
-	std::vector<glm::vec4> & vertices,
-	std::vector<glm::vec3> & normals,
-    std::vector<GLushort> & elements
+	const char * path,
+    std::vector<glm::vec3> & out_vertices,
+    std::vector<glm::vec2> & out_uvs,
+    std::vector<glm::vec3> & out_normals
 ){
 	printf("Loading OBJ file %s...\n", path);
     std::ifstream input_file(path, std::ios::in);
     if (!input_file) { std::cerr << "Cannot open " << path << std::endl;
         return false;
     }
+
+    std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+    std::vector<glm::vec3> temp_vertices;
+    std::vector<glm::vec2> temp_uvs;
+    std::vector<glm::vec3> temp_normals;
 
     std::string line;
     while (getline(input_file, line)) {
@@ -243,22 +240,89 @@ bool loadOBJ_new(
             std::cout << "parsing vertex v" << std::endl;
 
             std::istringstream line_stream(line.substr(2));
-            glm::vec4 vertex;
-            line_stream >> vertex.x >> vertex.y >> vertex.z; vertex.w = 1.0;
-            vertices.push_back(vertex);
+            glm::vec3 vertex;
+            line_stream >> vertex.x >> vertex.y >> vertex.z;
+            temp_vertices.push_back(vertex);
+        }
+        if (line_header == "vn") {
+            std::cout << "parsing normals v" << std::endl;
+
+            std::istringstream line_stream(line.substr(2));
+            glm::vec3 vertex;
+            line_stream >> vertex.x >> vertex.y >> vertex.z;
+            temp_normals.push_back(vertex);
         }
         else if (line_header == "f ") {
             std::cout << "parsing face" << std::endl;
+            std::vector<unsigned int> vertex_index, normal_index;
             std::istringstream line_stream(line.substr(2));
-            parse_face_line(line_stream, normals, elements);
+            parse_face_line(line_stream, vertex_index, normal_index);
+            vertexIndices.push_back(vertex_index[0]);
+            vertexIndices.push_back(vertex_index[1]);
+            vertexIndices.push_back(vertex_index[2]);
+            normalIndices.push_back(normal_index[0]);
+            normalIndices.push_back(normal_index[1]);
+            normalIndices.push_back(normal_index[2]);
         }
         else if (line[0] == '#') { /* ignoring this line */ }
         else { /* ignoring this line */ }
     }
-    std::cout << "parsed_ob" << std::endl;
-    calc_normals(vertices, normals, elements);
+    for( unsigned int i=0; i<vertexIndices.size(); i++ ){
+
+        // Get the indices of its attributes
+        unsigned int vertexIndex = vertexIndices[i];
+        unsigned int normalIndex = normalIndices[i];
+
+        // Get the attributes thanks to the index
+        glm::vec3 vertex = temp_vertices[ vertexIndex-1 ];
+        glm::vec3 normal = temp_normals[ normalIndex-1 ];
+
+        // Put the attributes in buffers
+        out_vertices.push_back(vertex);
+        out_normals .push_back(normal);
+
+    }
+//    std::cout << "parsed_ob" << std::endl;
+//    calc_normals(vertices, normals, elements);
 	return true;
 }
+
+//bool loadOBJ_new(
+//        const char * path,
+//        std::vector<glm::vec4> & vertices,
+//        std::vector<glm::vec3> & normals,
+//        std::vector<GLushort> & elements
+//){
+//    printf("Loading OBJ file %s...\n", path);
+//    std::ifstream input_file(path, std::ios::in);
+//    if (!input_file) { std::cerr << "Cannot open " << path << std::endl;
+//        return false;
+//    }
+//
+//    std::string line;
+//    while (getline(input_file, line)) {
+//        std::string line_header = line.substr(0,2);
+//        if (line_header == "v ") {
+//            std::cout << "parsing vertex v" << std::endl;
+//
+//            std::istringstream line_stream(line.substr(2));
+//            glm::vec4 vertex;
+//            line_stream >> vertex.x >> vertex.y >> vertex.z; vertex.w = 1.0;
+//            vertices.push_back(vertex);
+//        }
+//        else if (line_header == "f ") {
+//            std::cout << "parsing face" << std::endl;
+//            std::istringstream line_stream(line.substr(2));
+//            parse_face_line(line_stream, normals, elements);
+//        }
+//        else if (line[0] == '#') { /* ignoring this line */ }
+//        else { /* ignoring this line */ }
+//    }
+//    std::cout << "parsed_ob" << std::endl;
+//    calc_normals(vertices, normals, elements);
+//    return true;
+//}
+
 
 
 #ifdef USE_ASSIMP // don't use this #define, it's only for me (it AssImp fails to compile on your machine, at least all the other tutorials still work)

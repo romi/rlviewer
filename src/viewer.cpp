@@ -439,7 +439,8 @@ static int load_model(const char *path)
         std::vector<glm::vec3> vertices;
         std::vector<glm::vec2> uvs;
         std::vector<glm::vec3> normals;
-        bool res = loadOBJ(path, vertices, uvs, normals);
+//        bool res = loadOBJ(path, vertices, uvs, normals);
+        bool res = loadOBJ_new(path, vertices, uvs, normals);
         if (!res)
                 return -1;
         
