@@ -1,7 +1,7 @@
 from distutils.core import setup, Extension
 
 module1 = Extension('rlviewer',
-                    sources = ['src/rlviewer.c',
+                    sources = ['src/rlviewer.cpp',
                                'src/viewer.cpp',
                                'src/vboindexer.cpp',
                                'src/texture.cpp',
