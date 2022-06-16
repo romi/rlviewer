@@ -2,11 +2,13 @@ import math
 import numpy as np
 
 # https://en.wikipedia.org/wiki/Focal_length
+# https://community.khronos.org/t/how-to-set-focal-length-in-opengl/46176/4
 
 w = 1024
 h = 768
 
-pixelsize = 36.0 / 1024
+# Assuming a standard 36mm film
+pixelsize = 36.0 / w
 
 fov_degrees = 45
 fov = np.radians(45)
