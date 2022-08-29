@@ -1,5 +1,7 @@
 // Include GLFW
+#include <iostream>
 #include <GLFW/glfw3.h>
+#include <glm/gtx/string_cast.hpp>
 extern GLFWwindow* window; // The "extern" keyword here is to access the variable "window" declared in tutorialXXX.cpp. This is a hack to keep the tutorials simple. Please avoid this.
 
 // Include GLM
@@ -67,5 +69,5 @@ void computeMatrices(float r, float lat, float lon)
                 position,           // Camera is here
                 center, // and looks here : at the same position, plus "direction"
                 up                  // Head is up (set to 0,-1,0 to look upside-down)
-                );        
+                );
 }
