@@ -48,7 +48,6 @@ GLuint LightPower4ID;
 
 bool model_loaded = false;
 GLuint vertexbuffer;
-//GLuint uvbuffer;
 GLuint normalbuffer;
 GLuint elementbuffer;
 
@@ -197,22 +196,8 @@ int viewer_init(void)
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
                                   GL_RENDERBUFFER, depthrenderbuffer);
 
-	//// Alternative : Depth texture. Slower, but you can sample it later in your shader
-	//GLuint depthTexture;
-	//glGenTextures(1, &depthTexture);
-	//glBindTexture(GL_TEXTURE_2D, depthTexture);
-	//glTexImage2D(GL_TEXTURE_2D, 0,GL_DEPTH_COMPONENT24, 1024, 768, 0,GL_DEPTH_COMPONENT, GL_FLOAT, 0);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST); 
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	//glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
 	// Set "renderedTexture" as our colour attachement #0
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderedTexture, 0);
-
-	//// Depth texture alternative : 
-	//glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTexture, 0);
-
 
 	// Set the list of draw buffers.
 	GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
@@ -221,7 +206,6 @@ int viewer_init(void)
 	// Always check that our framebuffer is ok
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		return false;
-
 	
 	// The fullscreen quad's FBO
 	static const GLfloat g_quad_vertex_buffer_data[] = { 
@@ -313,18 +297,6 @@ static void do_draw_model(float r, float lat, float lon)
                 0,                  // stride
                 (void*)0            // array buffer offset
                 );
-
-        // 2nd attribute buffer : UVs
-        // glEnableVertexAttribArray(1);
-        // glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        // glVertexAttribPointer(
-        //         1,                                // attribute
-        //         2,                                // size
-        //         GL_FLOAT,                         // type
-        //         GL_FALSE,                         // normalized?
-        //         0,                                // stride
-        //         (void*)0                          // array buffer offset
-        //         );
 
         // 3rd attribute buffer : normals
         glEnableVertexAttribArray(2);
@@ -451,7 +423,6 @@ static int load_model(const char *path)
 {
         printf("loading %s\n", path);
         std::vector<glm::vec3> vertices;
-        //std::vector<glm::vec2> uvs;
         std::vector<glm::vec3> normals;
         bool res = loadOBJ(path,
                            vertices,
@@ -461,14 +432,11 @@ static int load_model(const char *path)
                 return -1;
         
         std::vector<glm::vec3> indexed_vertices;
-        //std::vector<glm::vec2> indexed_uvs;
         std::vector<glm::vec3> indexed_normals;
         indexVBO(vertices,
-                 //uvs,
                  normals,
                  indices,
                  indexed_vertices,
-                 //indexed_uvs,
                  indexed_normals);
 
         // Load it into a VBO
@@ -476,11 +444,6 @@ static int load_model(const char *path)
         glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
         glBufferData(GL_ARRAY_BUFFER, indexed_vertices.size() * sizeof(glm::vec3),
                      &indexed_vertices[0], GL_STATIC_DRAW);
-
-        // glGenBuffers(1, &uvbuffer);
-        // glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        // glBufferData(GL_ARRAY_BUFFER, indexed_uvs.size() * sizeof(glm::vec2),
-        //              &indexed_uvs[0], GL_STATIC_DRAW);
 
         glGenBuffers(1, &normalbuffer);
         glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
@@ -500,9 +463,9 @@ static int load_model(const char *path)
 static void unload_model(void)
 {
         if (model_loaded) {
+                indices.clear();
                 // Cleanup VBO
                 glDeleteBuffers(1, &vertexbuffer);
-                // glDeleteBuffers(1, &uvbuffer);
                 glDeleteBuffers(1, &normalbuffer);
                 glDeleteBuffers(1, &elementbuffer);
                 model_loaded = false;
