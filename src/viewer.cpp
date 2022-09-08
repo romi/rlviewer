@@ -421,7 +421,7 @@ int viewer_mask(float *mask, float r, float lat, float lon)
 
 static int load_model(const char *path)
 {
-        printf("loading %s\n", path);
+        //printf("loading %s\n", path);
         std::vector<glm::vec3> vertices;
         std::vector<glm::vec3> normals;
         bool res = loadOBJ(path,
